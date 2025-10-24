@@ -1,0 +1,269 @@
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslations } from './hooks/useTranslations';
+import type { Team } from './types';
+import { LanguageSelector } from './components/LanguageSelector';
+import { TeamCard } from './components/TeamCard';
+import { ShareIcon, UsersIcon, PaletteIcon } from './components/Icons';
+
+const TWO_TEAM_COLORS = ['#222222', '#F0F0F0'];
+const FOUR_TEAM_COLORS = ['#222222', '#F0F0F0', '#F59E0B', '#10B981'];
+
+
+const App: React.FC = () => {
+  const t = useTranslations();
+  const [namesInput, setNamesInput] = useState('');
+  const [numberOfTeams, setNumberOfTeams] = useState<2 | 4>(2);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [activeTeamId, setActiveTeamId] = useState<number | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // This effect resets the teams completely when the number of teams changes.
+  useEffect(() => {
+    const colors = numberOfTeams === 2 ? TWO_TEAM_COLORS : FOUR_TEAM_COLORS;
+    const initialTeams: Team[] = Array.from({ length: numberOfTeams }, (_, i) => ({
+      id: i + 1,
+      name: `${t('team')} ${i + 1}`,
+      members: [],
+      color: colors[i],
+    }));
+    setTeams(initialTeams);
+    setActiveTeamId(null);
+    // We disable the lint rule because we INTENTIONALLY do not want this effect
+    // to re-run when `t` (language) changes, as that is handled by the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numberOfTeams]);
+
+  // This effect updates only the team names when the language changes, preserving members.
+  useEffect(() => {
+    setTeams(currentTeams =>
+      currentTeams.map((team, i) => ({
+        ...team,
+        name: `${t('team')} ${i + 1}`
+      }))
+    );
+  }, [t]);
+
+
+  const allPlayers = useMemo(() => 
+    [...new Set(namesInput
+      .split(/[\n,;]+/)
+      .map(name => name.trim())
+      .filter(name => name.length > 0))]
+  , [namesInput]);
+      
+  const assignedPlayers = useMemo(() => 
+    new Set(teams.flatMap(t => t.members)), 
+  [teams]);
+      
+  const unassignedPlayers = useMemo(() => 
+    allPlayers.filter(p => !assignedPlayers.has(p)),
+  [allPlayers, assignedPlayers]);
+
+
+  const handleColorChange = (teamId: number, color: string) => {
+    setTeams(currentTeams =>
+      currentTeams.map(team =>
+        team.id === teamId ? { ...team, color } : team
+      )
+    );
+  };
+  
+  const handleAssignPlayer = (playerName: string) => {
+    if (activeTeamId === null) {
+        alert(t('selectTeamFirst'));
+        return;
+    }
+    setTeams(currentTeams => 
+        currentTeams.map(team => 
+            team.id === activeTeamId 
+                ? { ...team, members: [...team.members, playerName].sort() }
+                : team
+        )
+    );
+  };
+  
+  const handleUnassignMember = (memberName: string, fromTeamId: number) => {
+    setTeams(currentTeams => 
+      currentTeams.map(team => 
+        team.id === fromTeamId 
+          ? { ...team, members: team.members.filter(m => m !== memberName) }
+          : team
+      )
+    );
+  };
+
+  const handleShare = async () => {
+    if (!resultsRef.current) return;
+
+    if (!(window as any).htmlToImage) {
+      console.error("html-to-image library not loaded");
+      alert(t('shareLibraryError'));
+      return;
+    }
+      
+    setIsGeneratingImage(true);
+    try {
+      const dataUrl = await (window as any).htmlToImage.toPng(resultsRef.current, { 
+        quality: 1.0, 
+        pixelRatio: 2,
+        backgroundColor: '#111827'
+      });
+      const blob = await(await fetch(dataUrl)).blob();
+      const file = new File([blob], 'teams_result.png', { type: 'image/png' });
+      
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: t('shareTitle'),
+          text: t('shareText'),
+          files: [file],
+        });
+      } else {
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = 'teams_result.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error(t('shareError'), error);
+      alert(t('shareError'));
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-gray-100 font-sans flex flex-col items-center p-4 sm:p-6 lg:p-8">
+      <header className="w-full max-w-5xl flex justify-between items-center mb-6">
+        <h1 className="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+          Team Jersey Color
+        </h1>
+        <LanguageSelector />
+      </header>
+
+      <main className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Controls Section */}
+        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg flex flex-col gap-6">
+          <div>
+            <label htmlFor="names" className="block text-lg font-semibold mb-2 text-blue-300 flex items-center gap-2">
+              <UsersIcon /> {t('enterNames')}
+            </label>
+            <textarea
+              id="names"
+              value={namesInput}
+              onChange={e => setNamesInput(e.target.value)}
+              placeholder={t('namesPlaceholder')}
+              className="w-full h-40 p-3 bg-gray-700 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 resize-y"
+            ></textarea>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-3 text-purple-300 flex items-center gap-2">
+              <PaletteIcon /> {t('selectTeams')}
+            </h3>
+            <div className="flex gap-4">
+              {[2, 4].map(num => (
+                <button
+                  key={num}
+                  onClick={() => setNumberOfTeams(num as 2 | 4)}
+                  className={`w-full py-3 px-4 rounded-lg text-center font-bold transition duration-200 ${
+                    numberOfTeams === num
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                >
+                  {num} {t('teams')}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div className="pt-2">
+            <div className="flex gap-4 items-center justify-start">
+              {teams.map(team => (
+                <div 
+                  key={team.id} 
+                  className="flex flex-col items-center gap-2 cursor-pointer"
+                  onClick={() => setActiveTeamId(team.id)}
+                  title={t('clickToSelectTeam')}
+                >
+                   <label className="text-sm font-medium text-gray-400 cursor-pointer select-none">{team.name}</label>
+                   <div 
+                     className={`w-12 h-12 rounded-full border-2 transition-all duration-200 ${
+                        activeTeamId === team.id 
+                          ? 'ring-4 ring-blue-500 ring-offset-2 ring-offset-gray-800 border-transparent' 
+                          : 'border-gray-600 hover:scale-110'
+                      }`}
+                     style={{ backgroundColor: team.color }}
+                   ></div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="flex-grow min-h-0 overflow-y-auto border-t-2 border-gray-700 pt-4">
+             <h3 className="text-lg font-semibold mb-3 text-green-300">{t('unassignedPlayers')} ({unassignedPlayers.length})</h3>
+             {allPlayers.length > 0 ? (
+                unassignedPlayers.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                        {unassignedPlayers.map(player => (
+                            <button 
+                                key={player}
+                                onClick={() => handleAssignPlayer(player)}
+                                className="px-3 py-1 bg-gray-600 text-gray-200 rounded-full hover:bg-blue-600 hover:text-white transition-colors duration-200"
+                                title={t('clickToAssign')}
+                            >
+                                {player}
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-gray-500 italic">{t('allPlayersAssigned')}</p>
+                )
+             ) : (
+                <p className="text-gray-500 italic">{t('noPlayers')}</p>
+             )}
+          </div>
+        </div>
+
+        {/* Results Section */}
+        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg flex flex-col">
+          <h2 className="text-2xl font-bold mb-4 text-center text-gray-300">{t('results')}</h2>
+          {teams.length > 0 ? (
+            <div className="flex-grow flex flex-col justify-between">
+              <div ref={resultsRef} id="results-container" className="bg-gray-800 p-4 rounded-lg">
+                <div className={`grid ${numberOfTeams === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2'} gap-4`}>
+                  {teams.map(team => (
+                    <TeamCard
+                      key={team.id}
+                      team={team}
+                      isActive={activeTeamId === team.id}
+                      onColorChange={handleColorChange}
+                      onUnassignMember={handleUnassignMember}
+                    />
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={handleShare}
+                disabled={isGeneratingImage || allPlayers.length === 0}
+                className="mt-6 w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <ShareIcon />
+                {isGeneratingImage ? t('sharing') : t('share')}
+              </button>
+            </div>
+          ) : (
+            <div className="flex-grow flex items-center justify-center text-gray-500">
+              <p>{t('noResults')}</p>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default App;

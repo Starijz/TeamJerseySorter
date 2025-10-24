@@ -1,0 +1,5 @@
+{
+  "name": "Team Jersey Color",
+  "description": "A progressive web app to split a list of names into teams, customize team colors, and share the results as an image. The app supports English, Latvian, and Russian languages.",
+  "requestFramePermissions": []
+}
