@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import * as htmlToImage from 'html-to-image';
 import { useTranslations } from './hooks/useTranslations';
 import type { Team } from './types';
 import { LanguageSelector } from './components/LanguageSelector';
@@ -95,16 +96,10 @@ const App: React.FC = () => {
 
   const handleShare = async () => {
     if (!resultsRef.current) return;
-
-    if (!(window as any).htmlToImage) {
-      console.error("html-to-image library not loaded");
-      alert(t('shareLibraryError'));
-      return;
-    }
       
     setIsGeneratingImage(true);
     try {
-      const dataUrl = await (window as any).htmlToImage.toPng(resultsRef.current, { 
+      const dataUrl = await htmlToImage.toPng(resultsRef.current, { 
         quality: 1.0, 
         pixelRatio: 2,
         backgroundColor: '#111827'
