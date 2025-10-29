@@ -4,7 +4,7 @@ import { useTranslations } from './hooks/useTranslations';
 import type { Team } from './types';
 import { LanguageSelector } from './components/LanguageSelector';
 import { TeamCard } from './components/TeamCard';
-import { ShareIcon, UsersIcon, PaletteIcon, MoveIcon, ShuffleIcon } from './components/Icons';
+import { ShareIcon, UsersIcon, PaletteIcon, MoveIcon, ShuffleIcon, ClearIcon } from './components/Icons';
 
 const TWO_TEAM_COLORS = ['#222222', '#F0F0F0'];
 const FOUR_TEAM_COLORS = ['#222222', '#F0F0F0', '#F59E0B', '#10B981'];
@@ -197,6 +197,10 @@ const App: React.FC = () => {
 
     setTeams(newTeams);
   }, [allPlayers, teams, numberOfTeams]);
+  
+  const handleClearNames = useCallback(() => {
+    setNamesInput('');
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans flex flex-col items-center p-4 sm:p-6 lg:p-8">
@@ -211,9 +215,22 @@ const App: React.FC = () => {
         {/* Controls Section */}
         <div className="bg-gray-800 p-6 rounded-2xl shadow-lg flex flex-col gap-6">
           <div>
-            <label htmlFor="names" className="block text-lg font-semibold mb-2 text-blue-300 flex items-center gap-2">
-              <UsersIcon /> {t('enterNames')}
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label htmlFor="names" className="text-lg font-semibold text-blue-300 flex items-center gap-2">
+                <UsersIcon /> {t('enterNames')}
+                <span className="text-sm font-normal bg-gray-700 text-gray-300 px-2 py-1 rounded-md">{allPlayers.length}</span>
+              </label>
+              {allPlayers.length > 0 && (
+                <button 
+                  onClick={handleClearNames}
+                  className="text-sm text-gray-400 hover:text-white hover:bg-red-500/20 px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                  title={t('clearNames')}
+                >
+                  <ClearIcon />
+                  {t('clear')}
+                </button>
+              )}
+            </div>
             <textarea
               id="names"
               value={namesInput}

@@ -30,6 +30,8 @@ export const translations: Translations = {
     randomizeTooltip: 'Automatically assign all players to teams',
     dragToMove: 'Drag to move',
     actions: 'Actions',
+    clear: 'Clear',
+    clearNames: 'Clear player list',
   },
   lv: {
     enterNames: 'Ievadiet Vārdus',
@@ -60,6 +62,8 @@ export const translations: Translations = {
     randomizeTooltip: 'Automātiski piešķirt visus spēlētājus komandām',
     dragToMove: 'Velciet, lai pārvietotu',
     actions: 'Darbības',
+    clear: 'Notīrīt',
+    clearNames: 'Notīrīt spēlētāju sarakstu',
   },
   ru: {
     enterNames: 'Введите Имена',
@@ -90,5 +94,7 @@ export const translations: Translations = {
     randomizeTooltip: 'Автоматически распределить всех игроков по командам',
     dragToMove: 'Перетащите для перемещения',
     actions: 'Действия',
+    clear: 'Очистить',
+    clearNames: 'Очистить список игроков',
   },
 };
