@@ -1,12 +1,19 @@
 import React from 'react';
 import type { Team } from '../types';
 import { useTranslations } from '../hooks/useTranslations';
+import { CloseIcon, MoveIcon } from './Icons';
 
 interface TeamCardProps {
   team: Team;
   isActive: boolean;
+  isDragOver: boolean;
   onColorChange: (teamId: number, color: string) => void;
   onUnassignMember: (memberName: string, fromTeamId: number) => void;
+  onDrop: (e: React.DragEvent, teamId: number) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragEnter: (teamId: number) => void;
+  onDragLeave: () => void;
+  onPlayerDragStart: (e: React.DragEvent, memberName: string, fromTeamId: number) => void;
 }
 
 const getContrastingTextColor = (hex: string): string => {
@@ -32,12 +39,18 @@ const getContrastingTextColor = (hex: string): string => {
 };
 
 
-export const TeamCard: React.FC<TeamCardProps> = ({ team, onColorChange, onUnassignMember, isActive }) => {
+export const TeamCard: React.FC<TeamCardProps> = ({ team, onColorChange, onUnassignMember, isActive, isDragOver, onDrop, onDragLeave, onDragEnter, onDragOver, onPlayerDragStart }) => {
   const t = useTranslations();
   
   return (
     <div
-      className={`flex flex-col rounded-xl overflow-hidden shadow-lg bg-gray-700 h-full transition-all duration-200 ${isActive ? 'ring-4 ring-blue-500' : 'ring-4 ring-transparent'}`}
+      onDrop={(e) => onDrop(e, team.id)}
+      onDragOver={onDragOver}
+      onDragEnter={() => onDragEnter(team.id)}
+      onDragLeave={onDragLeave}
+      className={`flex flex-col rounded-xl overflow-hidden shadow-lg bg-gray-700 h-full transition-all duration-200 ring-4 ${
+        isDragOver ? 'ring-green-500' : isActive ? 'ring-blue-500' : 'ring-transparent'
+      }`}
     >
       <div
         className="p-3 font-bold text-lg flex items-center justify-between"
@@ -72,15 +85,27 @@ export const TeamCard: React.FC<TeamCardProps> = ({ team, onColorChange, onUnass
             {team.members.map((member, index) => (
                 <li 
                     key={`${member}-${index}`}
-                    onClick={() => onUnassignMember(member, team.id)}
-                    className="px-2 py-1 rounded flex items-center justify-between font-medium cursor-pointer transition-opacity hover:opacity-80"
+                    draggable="true"
+                    onDragStart={(e) => onPlayerDragStart(e, member, team.id)}
+                    className="px-2 py-1 rounded flex items-center justify-between font-medium transition-opacity hover:opacity-80"
                     style={{
                         backgroundColor: team.color,
                         color: getContrastingTextColor(team.color),
                     }}
-                    title={`${t('unassign')} ${member}`}
+                    title={t('dragToMove')}
                 >
-                    <span className="truncate pr-2">{member}</span>
+                    <div className="flex items-center gap-2 flex-grow cursor-grab">
+                        <MoveIcon />
+                        <span className="truncate pr-2">{member}</span>
+                    </div>
+                    <button
+                        onClick={() => onUnassignMember(member, team.id)}
+                        className="p-1 rounded-full opacity-70 hover:opacity-100 hover:bg-black/20 transition-all"
+                        aria-label={`${t('unassign')} ${member}`}
+                        title={`${t('unassign')} ${member}`}
+                    >
+                        <CloseIcon />
+                    </button>
                 </li>
             ))}
             </ul>

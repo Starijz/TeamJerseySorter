@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vitejs.dev/config/
 export default defineConfig({
   // IMPORTANT: Replace 'team-jersey-color' with your repository name if it's different.
-  base: '/team-jersey-color/',
+  base: '/TeamJerseySorter/',
   plugins: [
     react(),
     VitePWA({

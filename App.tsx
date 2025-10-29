@@ -4,7 +4,7 @@ import { useTranslations } from './hooks/useTranslations';
 import type { Team } from './types';
 import { LanguageSelector } from './components/LanguageSelector';
 import { TeamCard } from './components/TeamCard';
-import { ShareIcon, UsersIcon, PaletteIcon } from './components/Icons';
+import { ShareIcon, UsersIcon, PaletteIcon, MoveIcon, ShuffleIcon } from './components/Icons';
 
 const TWO_TEAM_COLORS = ['#222222', '#F0F0F0'];
 const FOUR_TEAM_COLORS = ['#222222', '#F0F0F0', '#F59E0B', '#10B981'];
@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [activeTeamId, setActiveTeamId] = useState<number | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [dragOverTeamId, setDragOverTeamId] = useState<number | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   // This effect resets the teams completely when the number of teams changes.
@@ -129,6 +130,74 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDragStart = (e: React.DragEvent, playerName: string, sourceTeamId: number | null) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({ playerName, sourceTeamId }));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+  
+  const handleDragEnter = (teamId: number) => {
+    setDragOverTeamId(teamId);
+  };
+  
+  const handleDragLeave = () => {
+    setDragOverTeamId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetTeamId: number) => {
+    e.preventDefault();
+    setDragOverTeamId(null);
+    try {
+        const data = JSON.parse(e.dataTransfer.getData('application/json'));
+        const { playerName, sourceTeamId } = data as { playerName: string; sourceTeamId: number | null };
+
+        if (sourceTeamId === targetTeamId) return;
+  
+        setTeams(currentTeams => {
+            let newTeams = [...currentTeams];
+            if (sourceTeamId !== null) {
+                newTeams = newTeams.map(team =>
+                    team.id === sourceTeamId
+                        ? { ...team, members: team.members.filter(m => m !== playerName) }
+                        : team
+                );
+            }
+            newTeams = newTeams.map(team =>
+                team.id === targetTeamId && !team.members.includes(playerName)
+                    ? { ...team, members: [...team.members, playerName].sort() }
+                    : team
+            );
+            return newTeams;
+        });
+    } catch (error) {
+        console.error("Failed to parse drag-and-drop data", error);
+    }
+  };
+
+  const handleRandomize = () => {
+    if (allPlayers.length === 0) return;
+
+    const shuffledPlayers = [...allPlayers];
+    for (let i = shuffledPlayers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
+    }
+
+    const newTeams = teams.map(team => ({ ...team, members: [] as string[] }));
+
+    shuffledPlayers.forEach((player, index) => {
+        const teamIndex = index % numberOfTeams;
+        newTeams[teamIndex].members.push(player);
+    });
+    
+    newTeams.forEach(team => team.members.sort());
+
+    setTeams(newTeams);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans flex flex-col items-center p-4 sm:p-6 lg:p-8">
       <header className="w-full max-w-5xl flex justify-between items-center mb-6">
@@ -176,6 +245,7 @@ const App: React.FC = () => {
           </div>
           
           <div className="pt-2">
+            <h3 className="text-lg font-semibold mb-3 text-blue-300">{t('selectTeamToAssign')}</h3>
             <div className="flex gap-4 items-center justify-start">
               {teams.map(team => (
                 <div 
@@ -197,6 +267,19 @@ const App: React.FC = () => {
               ))}
             </div>
           </div>
+
+          <div className="border-t-2 border-gray-700 pt-4 flex flex-col gap-4">
+            <h3 className="text-lg font-semibold text-gray-300">{t('actions')}</h3>
+            <button 
+              onClick={handleRandomize}
+              disabled={allPlayers.length === 0}
+              className="w-full py-3 px-4 rounded-lg text-center font-bold transition duration-200 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              title={t('randomizeTooltip')}
+            >
+              <ShuffleIcon />
+              {t('randomize')}
+            </button>
+          </div>
           
           <div className="flex-grow min-h-0 overflow-y-auto border-t-2 border-gray-700 pt-4">
              <h3 className="text-lg font-semibold mb-3 text-green-300">{t('unassignedPlayers')} ({unassignedPlayers.length})</h3>
@@ -206,11 +289,14 @@ const App: React.FC = () => {
                         {unassignedPlayers.map(player => (
                             <button 
                                 key={player}
+                                draggable="true"
+                                onDragStart={(e) => handleDragStart(e, player, null)}
                                 onClick={() => handleAssignPlayer(player)}
-                                className="px-3 py-1 bg-gray-600 text-gray-200 rounded-full hover:bg-blue-600 hover:text-white transition-colors duration-200"
-                                title={t('clickToAssign')}
+                                className="px-3 py-1 bg-gray-600 text-gray-200 rounded-full hover:bg-blue-600 hover:text-white transition-colors duration-200 flex items-center gap-2 cursor-grab"
+                                title={`${t('clickToAssign')} / ${t('dragToMove')}`}
                             >
-                                {player}
+                                <MoveIcon />
+                                <span>{player}</span>
                             </button>
                         ))}
                     </div>
@@ -235,8 +321,14 @@ const App: React.FC = () => {
                       key={team.id}
                       team={team}
                       isActive={activeTeamId === team.id}
+                      isDragOver={dragOverTeamId === team.id}
                       onColorChange={handleColorChange}
                       onUnassignMember={handleUnassignMember}
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragEnter={handleDragEnter}
+                      onDragLeave={handleDragLeave}
+                      onPlayerDragStart={handleDragStart}
                     />
                   ))}
                 </div>
