@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import * as htmlToImage from 'html-to-image';
 import { useTranslations } from './hooks/useTranslations';
 import type { Team } from './types';
@@ -63,15 +63,15 @@ const App: React.FC = () => {
   [allPlayers, assignedPlayers]);
 
 
-  const handleColorChange = (teamId: number, color: string) => {
+  const handleColorChange = useCallback((teamId: number, color: string) => {
     setTeams(currentTeams =>
       currentTeams.map(team =>
         team.id === teamId ? { ...team, color } : team
       )
     );
-  };
+  }, []);
   
-  const handleAssignPlayer = (playerName: string) => {
+  const handleAssignPlayer = useCallback((playerName: string) => {
     if (activeTeamId === null) {
         alert(t('selectTeamFirst'));
         return;
@@ -83,9 +83,9 @@ const App: React.FC = () => {
                 : team
         )
     );
-  };
+  }, [activeTeamId, t]);
   
-  const handleUnassignMember = (memberName: string, fromTeamId: number) => {
+  const handleUnassignMember = useCallback((memberName: string, fromTeamId: number) => {
     setTeams(currentTeams => 
       currentTeams.map(team => 
         team.id === fromTeamId 
@@ -93,9 +93,9 @@ const App: React.FC = () => {
           : team
       )
     );
-  };
+  }, []);
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     if (!resultsRef.current) return;
       
     setIsGeneratingImage(true);
@@ -128,26 +128,26 @@ const App: React.FC = () => {
     } finally {
       setIsGeneratingImage(false);
     }
-  };
+  }, [t]);
 
-  const handleDragStart = (e: React.DragEvent, playerName: string, sourceTeamId: number | null) => {
+  const handleDragStart = useCallback((e: React.DragEvent, playerName: string, sourceTeamId: number | null) => {
     e.dataTransfer.setData('application/json', JSON.stringify({ playerName, sourceTeamId }));
     e.dataTransfer.effectAllowed = 'move';
-  };
+  }, []);
   
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-  };
+  }, []);
   
-  const handleDragEnter = (teamId: number) => {
+  const handleDragEnter = useCallback((teamId: number) => {
     setDragOverTeamId(teamId);
-  };
+  }, []);
   
-  const handleDragLeave = () => {
+  const handleDragLeave = useCallback(() => {
     setDragOverTeamId(null);
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent, targetTeamId: number) => {
+  const handleDrop = useCallback((e: React.DragEvent, targetTeamId: number) => {
     e.preventDefault();
     setDragOverTeamId(null);
     try {
@@ -175,9 +175,9 @@ const App: React.FC = () => {
     } catch (error) {
         console.error("Failed to parse drag-and-drop data", error);
     }
-  };
+  }, []);
 
-  const handleRandomize = () => {
+  const handleRandomize = useCallback(() => {
     if (allPlayers.length === 0) return;
 
     const shuffledPlayers = [...allPlayers];
@@ -196,7 +196,7 @@ const App: React.FC = () => {
     newTeams.forEach(team => team.members.sort());
 
     setTeams(newTeams);
-  };
+  }, [allPlayers, teams, numberOfTeams]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 font-sans flex flex-col items-center p-4 sm:p-6 lg:p-8">
