@@ -4,8 +4,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // IMPORTANT: This should match your GitHub repository name.
-  base: '/TeamJerseySorter/',
+  // Use relative paths for assets to work correctly on GitHub Pages subdirectories.
+  base: './',
   plugins: [
     react(),
     VitePWA({
