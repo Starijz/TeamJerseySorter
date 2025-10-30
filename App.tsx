@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import * as htmlToImage from 'html-to-image';
 import { useTranslations } from './hooks/useTranslations';
 import type { Team } from './types';
 import { LanguageSelector } from './components/LanguageSelector';
@@ -100,6 +99,8 @@ const App: React.FC = () => {
       
     setIsGeneratingImage(true);
     try {
+      // Dynamically import the library only when needed
+      const htmlToImage = await import('html-to-image');
       const dataUrl = await htmlToImage.toPng(resultsRef.current, { 
         quality: 1.0, 
         pixelRatio: 2,
@@ -124,7 +125,12 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error(t('shareError'), error);
-      alert(t('shareError'));
+      // Check if it's a module loading error
+      if (error instanceof Error && error.message.includes('Failed to fetch dynamically imported module')) {
+        alert(t('shareLibraryError'));
+      } else {
+        alert(t('shareError'));
+      }
     } finally {
       setIsGeneratingImage(false);
     }
