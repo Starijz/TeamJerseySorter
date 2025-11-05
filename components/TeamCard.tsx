@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { Team } from '../types';
 import { useTranslations } from '../hooks/useTranslations';
 import { CloseIcon, MoveIcon } from './Icons';
@@ -8,6 +8,7 @@ interface TeamCardProps {
   isActive: boolean;
   isDragOver: boolean;
   onColorChange: (teamId: number, color: string) => void;
+  onTeamNameChange: (teamId: number, newName: string) => void;
   onUnassignMember: (memberName: string, fromTeamId: number) => void;
   onDrop: (e: React.DragEvent, teamId: number) => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -39,8 +40,54 @@ const getContrastingTextColor = (hex: string): string => {
 };
 
 
-export const TeamCard: React.FC<TeamCardProps> = ({ team, onColorChange, onUnassignMember, isActive, isDragOver, onDrop, onDragLeave, onDragEnter, onDragOver, onPlayerDragStart }) => {
+export const TeamCard: React.FC<TeamCardProps> = ({ 
+  team, 
+  onColorChange, 
+  onTeamNameChange,
+  onUnassignMember, 
+  isActive, 
+  isDragOver, 
+  onDrop, 
+  onDragLeave, 
+  onDragEnter, 
+  onDragOver, 
+  onPlayerDragStart 
+}) => {
   const t = useTranslations();
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [currentName, setCurrentName] = useState(team.name);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingName) {
+      nameInputRef.current?.focus();
+      nameInputRef.current?.select();
+    }
+  }, [isEditingName]);
+
+  useEffect(() => {
+    if (!isEditingName) {
+      setCurrentName(team.name);
+    }
+  }, [team.name, isEditingName]);
+
+  const handleNameSave = () => {
+    if (currentName.trim() && currentName.trim() !== team.name) {
+      onTeamNameChange(team.id, currentName.trim());
+    } else {
+      setCurrentName(team.name);
+    }
+    setIsEditingName(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleNameSave();
+    } else if (e.key === 'Escape') {
+      setCurrentName(team.name);
+      setIsEditingName(false);
+    }
+  };
   
   return (
     <div
@@ -56,8 +103,33 @@ export const TeamCard: React.FC<TeamCardProps> = ({ team, onColorChange, onUnass
         className="p-3 font-bold text-lg flex items-center justify-between"
         style={{ backgroundColor: team.color, color: getContrastingTextColor(team.color) }}
       >
-        <span>{team.name}</span>
-        <div className="relative w-8 h-8">
+        {isEditingName ? (
+          <input
+            ref={nameInputRef}
+            type="text"
+            value={currentName}
+            onChange={(e) => setCurrentName(e.target.value)}
+            onBlur={handleNameSave}
+            onKeyDown={handleKeyDown}
+            className="bg-transparent border-b-2 font-bold text-lg w-full focus:outline-none flex-grow"
+            style={{ 
+                borderColor: getContrastingTextColor(team.color),
+                color: getContrastingTextColor(team.color)
+            }}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Edit name for ${team.name}`}
+          />
+        ) : (
+          <span
+            onClick={(e) => { e.stopPropagation(); setIsEditingName(true); }}
+            className="cursor-pointer hover:opacity-75 flex-grow truncate"
+            title={t('editTeamName')}
+          >
+            {team.name}
+          </span>
+        )}
+
+        <div className="relative w-8 h-8 ml-2 flex-shrink-0">
           <input
             type="color"
             value={team.color}

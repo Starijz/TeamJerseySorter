@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useTranslations } from './hooks/useTranslations';
-import type { Team } from './types';
+import type { Team, Language } from './types';
 import { LanguageSelector } from './components/LanguageSelector';
 import { TeamCard } from './components/TeamCard';
 import { ShareIcon, UsersIcon, PaletteIcon, MoveIcon, ShuffleIcon, ClearIcon } from './components/Icons';
+import { translations } from './lib/translations';
 
 const TWO_TEAM_COLORS = ['#222222', '#F0F0F0'];
 const FOUR_TEAM_COLORS = ['#222222', '#F0F0F0', '#F59E0B', '#10B981'];
@@ -22,12 +23,28 @@ const App: React.FC = () => {
   // This effect resets the teams completely when the number of teams changes.
   useEffect(() => {
     const colors = numberOfTeams === 2 ? TWO_TEAM_COLORS : FOUR_TEAM_COLORS;
-    const initialTeams: Team[] = Array.from({ length: numberOfTeams }, (_, i) => ({
-      id: i + 1,
-      name: `${t('team')} ${i + 1}`,
-      members: [],
-      color: colors[i],
-    }));
+    const colorToNameKey = (color: string): string => {
+        switch(color) {
+            case '#222222': return 'teamNameBlack';
+            case '#F0F0F0': return 'teamNameWhite';
+            case '#F59E0B': return 'teamNameYellow';
+            case '#10B981': return 'teamNameGreen';
+            default: return 'team';
+        }
+    };
+
+    const initialTeams: Team[] = Array.from({ length: numberOfTeams }, (_, i) => {
+      const color = colors[i];
+      const nameKey = colorToNameKey(color);
+      const name = nameKey === 'team' ? `${t(nameKey)} ${i + 1}` : t(nameKey);
+
+      return {
+        id: i + 1,
+        name: name,
+        members: [],
+        color: color,
+      };
+    });
     setTeams(initialTeams);
     setActiveTeamId(null);
     // We disable the lint rule because we INTENTIONALLY do not want this effect
@@ -37,11 +54,46 @@ const App: React.FC = () => {
 
   // This effect updates only the team names when the language changes, preserving members.
   useEffect(() => {
+    const allDefaultNames = new Set<string>();
+    const colorNameKeys = ['teamNameBlack', 'teamNameWhite', 'teamNameYellow', 'teamNameGreen'];
+    
+    for (const langCode in translations) {
+        const lang = langCode as Language;
+        // Add new color-based default names
+        colorNameKeys.forEach(key => {
+            if (translations[lang][key]) {
+                allDefaultNames.add(translations[lang][key]);
+            }
+        });
+        // Add old "Team X" default names for backward compatibility
+        for (let i = 1; i <= 4; i++) {
+            allDefaultNames.add(`${translations[lang]['team']} ${i}`);
+        }
+    }
+
     setTeams(currentTeams =>
-      currentTeams.map((team, i) => ({
-        ...team,
-        name: `${t('team')} ${i + 1}`
-      }))
+      currentTeams.map((team, index) => {
+        if (allDefaultNames.has(team.name)) {
+            const colorToNameKey = (color: string): string | null => {
+                switch(color) {
+                    case '#222222': return 'teamNameBlack';
+                    case '#F0F0F0': return 'teamNameWhite';
+                    case '#F59E0B': return 'teamNameYellow';
+                    case '#10B981': return 'teamNameGreen';
+                    default: return null;
+                }
+            };
+            const nameKey = colorToNameKey(team.color);
+            
+            if (nameKey) {
+                return { ...team, name: t(nameKey) };
+            } else {
+                return { ...team, name: `${t('team')} ${index + 1}` };
+            }
+        }
+        // It's a custom name, so don't touch it.
+        return team;
+      })
     );
   }, [t]);
 
@@ -66,6 +118,14 @@ const App: React.FC = () => {
     setTeams(currentTeams =>
       currentTeams.map(team =>
         team.id === teamId ? { ...team, color } : team
+      )
+    );
+  }, []);
+
+  const handleTeamNameChange = useCallback((teamId: number, newName: string) => {
+    setTeams(currentTeams =>
+      currentTeams.map(team =>
+        team.id === teamId ? { ...team, name: newName } : team
       )
     );
   }, []);
@@ -346,6 +406,7 @@ const App: React.FC = () => {
                       isActive={activeTeamId === team.id}
                       isDragOver={dragOverTeamId === team.id}
                       onColorChange={handleColorChange}
+                      onTeamNameChange={handleTeamNameChange}
                       onUnassignMember={handleUnassignMember}
                       onDrop={handleDrop}
                       onDragOver={handleDragOver}
