@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import type { Team } from '../types';
 import { useTranslations } from '../hooks/useTranslations';
@@ -159,7 +160,8 @@ export const TeamCard: React.FC<TeamCardProps> = ({
                     key={`${member}-${index}`}
                     draggable="true"
                     onDragStart={(e) => onPlayerDragStart(e, member, team.id)}
-                    className="px-2 py-1 rounded flex items-center justify-between font-medium transition-opacity hover:opacity-80"
+                    // touch-none is crucial for mobile-drag-drop
+                    className="px-2 py-1 rounded flex items-center justify-between font-medium transition-opacity hover:opacity-80 touch-none"
                     style={{
                         backgroundColor: team.color,
                         color: getContrastingTextColor(team.color),

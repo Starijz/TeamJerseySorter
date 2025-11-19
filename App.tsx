@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useTranslations } from './hooks/useTranslations';
 import type { Team, Language } from './types';
@@ -9,6 +10,10 @@ import { translations } from './lib/translations';
 const TWO_TEAM_COLORS = ['#222222', '#F0F0F0'];
 const FOUR_TEAM_COLORS = ['#222222', '#F0F0F0', '#F59E0B', '#10B981'];
 
+// Helper to detect mobile devices roughly
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
 
 const App: React.FC = () => {
   const t = useTranslations();
@@ -158,31 +163,48 @@ const App: React.FC = () => {
     if (!resultsRef.current) return;
       
     setIsGeneratingImage(true);
+    
+    // Wait a brief moment to allow the UI to update with "Generating..." text
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     try {
       // Dynamically import the library only when needed
       const htmlToImage = await import('html-to-image');
       const dataUrl = await htmlToImage.toPng(resultsRef.current, { 
         quality: 1.0, 
         pixelRatio: 2,
-        backgroundColor: '#111827'
+        backgroundColor: '#111827',
+        // Ensure fonts and external images don't break generation
+        skipAutoScale: true,
       });
-      const blob = await(await fetch(dataUrl)).blob();
-      const file = new File([blob], 'teams_result.png', { type: 'image/png' });
       
-      if (navigator.share && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title: t('shareTitle'),
-          text: t('shareText'),
-          files: [file],
-        });
-      } else {
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = 'teams_result.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      // Check device type. 
+      // Web Share API with files is notoriously buggy on Desktop Windows/Chrome (can hang system).
+      // We prefer direct download on desktop to ensure stability.
+      const isMobile = isMobileDevice();
+
+      if (isMobile && navigator.share && navigator.canShare) {
+        const blob = await(await fetch(dataUrl)).blob();
+        const file = new File([blob], 'teams_result.png', { type: 'image/png' });
+        
+        if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: t('shareTitle'),
+              text: t('shareText'),
+              files: [file],
+            });
+            return; // Success exit
+        }
       }
+
+      // Fallback: Download file (Desktop or if Share API fails)
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = 'teams_result.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
     } catch (error) {
       console.error(t('shareError'), error);
       // Check if it's a module loading error
@@ -375,7 +397,8 @@ const App: React.FC = () => {
                                 draggable="true"
                                 onDragStart={(e) => handleDragStart(e, player, null)}
                                 onClick={() => handleAssignPlayer(player)}
-                                className="px-3 py-1 bg-gray-600 text-gray-200 rounded-full hover:bg-blue-600 hover:text-white transition-colors duration-200 flex items-center gap-2 cursor-grab"
+                                // touch-none is crucial for mobile-drag-drop to work without scrolling the page
+                                className="px-3 py-1 bg-gray-600 text-gray-200 rounded-full hover:bg-blue-600 hover:text-white transition-colors duration-200 flex items-center gap-2 cursor-grab touch-none"
                                 title={`${t('clickToAssign')} / ${t('dragToMove')}`}
                             >
                                 <MoveIcon />

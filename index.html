@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./icons/icon-192x192.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Team Jersey Color</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="theme-color" content="#1f2937">
@@ -15,6 +15,20 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Team Colors">
+    <style>
+      /* Styles for the mobile-drag-drop polyfill ghost element */
+      .dnd-poly-drag-image {
+        opacity: 0.8 !important;
+        position: absolute !important;
+        z-index: 9999 !important;
+        pointer-events: none !important;
+      }
+      
+      /* Prevent pulling down to refresh on mobile which interferes with app feel */
+      body {
+        overscroll-behavior-y: contain;
+      }
+    </style>
 <script type="importmap">
 {
   "imports": {
@@ -24,7 +38,9 @@
     "html-to-image": "https://aistudiocdn.com/html-to-image@^1.11.13",
     "vite": "https://aistudiocdn.com/vite@^7.1.12",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
-    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.1.0"
+    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.1.0",
+    "mobile-drag-drop/": "https://aistudiocdn.com/mobile-drag-drop@^3.0.0-rc.0/",
+    "mobile-drag-drop": "https://aistudiocdn.com/mobile-drag-drop@^3.0.0-rc.0"
   }
 }
 </script>
