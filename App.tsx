@@ -107,6 +107,8 @@ const App: React.FC = () => {
     [...new Set(namesInput
       .split(/[\n,;]+/)
       .map(name => name.trim())
+      // Automatically remove numbering like "1.", "1)", "1 " from the start of the name
+      .map(name => name.replace(/^\d+[\.\)\s]+\s*/, ''))
       .filter(name => name.length > 0))]
   , [namesInput]);
       
@@ -143,7 +145,7 @@ const App: React.FC = () => {
     setTeams(currentTeams => 
         currentTeams.map(team => 
             team.id === activeTeamId 
-                ? { ...team, members: [...team.members, playerName].sort() }
+                ? { ...team, members: [...team.members, playerName] }
                 : team
         )
     );
@@ -218,8 +220,8 @@ const App: React.FC = () => {
     }
   }, [t]);
 
-  const handleDragStart = useCallback((e: React.DragEvent, playerName: string, sourceTeamId: number | null) => {
-    e.dataTransfer.setData('application/json', JSON.stringify({ playerName, sourceTeamId }));
+  const handleDragStart = useCallback((e: React.DragEvent, playerName: string, sourceTeamId: number | null, originalIndex?: number) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({ playerName, sourceTeamId, originalIndex }));
     e.dataTransfer.effectAllowed = 'move';
   }, []);
   
@@ -235,29 +237,48 @@ const App: React.FC = () => {
     setDragOverTeamId(null);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent, targetTeamId: number) => {
+  const handleDrop = useCallback((e: React.DragEvent, targetTeamId: number, targetIndex?: number) => {
     e.preventDefault();
     setDragOverTeamId(null);
     try {
         const data = JSON.parse(e.dataTransfer.getData('application/json'));
-        const { playerName, sourceTeamId } = data as { playerName: string; sourceTeamId: number | null };
+        if (!data) return;
+        
+        const { playerName, sourceTeamId, originalIndex } = data as { playerName: string; sourceTeamId: number | null; originalIndex?: number };
 
-        if (sourceTeamId === targetTeamId) return;
-  
         setTeams(currentTeams => {
-            let newTeams = [...currentTeams];
-            if (sourceTeamId !== null) {
-                newTeams = newTeams.map(team =>
-                    team.id === sourceTeamId
-                        ? { ...team, members: team.members.filter(m => m !== playerName) }
-                        : team
-                );
+            const newTeams = currentTeams.map(t => ({...t, members: [...t.members]}));
+            
+            const sourceTeam = sourceTeamId !== null ? newTeams.find(t => t.id === sourceTeamId) : null;
+            const targetTeam = newTeams.find(t => t.id === targetTeamId);
+            
+            if (!targetTeam) return currentTeams;
+
+            // Remove from source if it exists
+            if (sourceTeam) {
+                const idx = sourceTeam.members.indexOf(playerName);
+                if (idx > -1) sourceTeam.members.splice(idx, 1);
             }
-            newTeams = newTeams.map(team =>
-                team.id === targetTeamId && !team.members.includes(playerName)
-                    ? { ...team, members: [...team.members, playerName].sort() }
-                    : team
-            );
+
+            // Determine insertion position
+            let insertPos = targetIndex !== undefined ? targetIndex : targetTeam.members.length;
+
+            // Adjust index if reordering in the same list and moving downwards (because removing shifted subsequent items)
+            if (sourceTeamId === targetTeamId && typeof originalIndex === 'number' && targetIndex !== undefined) {
+                if (originalIndex < targetIndex) {
+                    insertPos -= 1;
+                }
+            }
+
+            // Insert into target (avoid duplicates, though removal handled it mostly)
+            if (!targetTeam.members.includes(playerName)) {
+                // Clamp index
+                if (insertPos < 0) insertPos = 0;
+                if (insertPos > targetTeam.members.length) insertPos = targetTeam.members.length;
+                
+                targetTeam.members.splice(insertPos, 0, playerName);
+            }
+            
             return newTeams;
         });
     } catch (error) {
@@ -281,8 +302,6 @@ const App: React.FC = () => {
         newTeams[teamIndex].members.push(player);
     });
     
-    newTeams.forEach(team => team.members.sort());
-
     setTeams(newTeams);
   }, [allPlayers, teams, numberOfTeams]);
   

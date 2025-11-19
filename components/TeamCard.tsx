@@ -11,11 +11,11 @@ interface TeamCardProps {
   onColorChange: (teamId: number, color: string) => void;
   onTeamNameChange: (teamId: number, newName: string) => void;
   onUnassignMember: (memberName: string, fromTeamId: number) => void;
-  onDrop: (e: React.DragEvent, teamId: number) => void;
+  onDrop: (e: React.DragEvent, teamId: number, index?: number) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnter: (teamId: number) => void;
   onDragLeave: () => void;
-  onPlayerDragStart: (e: React.DragEvent, memberName: string, fromTeamId: number) => void;
+  onPlayerDragStart: (e: React.DragEvent, memberName: string, fromTeamId: number, index: number) => void;
 }
 
 const getContrastingTextColor = (hex: string): string => {
@@ -156,31 +156,41 @@ export const TeamCard: React.FC<TeamCardProps> = ({
         {team.members.length > 0 ? (
             <ul className="space-y-1 text-gray-200 text-sm">
             {team.members.map((member, index) => (
-                <li 
-                    key={`${member}-${index}`}
-                    draggable="true"
-                    onDragStart={(e) => onPlayerDragStart(e, member, team.id)}
-                    // touch-none is crucial for mobile-drag-drop
-                    className="px-2 py-1 rounded flex items-center justify-between font-medium transition-opacity hover:opacity-80 touch-none"
-                    style={{
-                        backgroundColor: team.color,
-                        color: getContrastingTextColor(team.color),
-                    }}
-                    title={t('dragToMove')}
-                >
-                    <div className="flex items-center gap-2 flex-grow cursor-grab">
-                        <MoveIcon />
-                        <span className="truncate pr-2">{member}</span>
-                    </div>
-                    <button
-                        onClick={() => onUnassignMember(member, team.id)}
-                        className="p-1 rounded-full opacity-70 hover:opacity-100 hover:bg-black/20 transition-all"
-                        aria-label={`${t('unassign')} ${member}`}
-                        title={`${t('unassign')} ${member}`}
+                <React.Fragment key={`${member}-${index}`}>
+                    <li 
+                        draggable="true"
+                        onDragStart={(e) => onPlayerDragStart(e, member, team.id, index)}
+                        onDragOver={(e) => e.preventDefault()} 
+                        onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation(); // Prevent drop on container
+                            onDrop(e, team.id, index);
+                        }}
+                        // touch-none is crucial for mobile-drag-drop
+                        className="px-2 py-1 rounded flex items-center justify-between font-medium transition-opacity hover:opacity-80 touch-none"
+                        style={{
+                            backgroundColor: team.color,
+                            color: getContrastingTextColor(team.color),
+                        }}
+                        title={t('dragToMove')}
                     >
-                        <CloseIcon />
-                    </button>
-                </li>
+                        <div className="flex items-center gap-2 flex-grow cursor-grab">
+                            <MoveIcon />
+                            <span className="truncate pr-2">{member}</span>
+                        </div>
+                        <button
+                            onClick={() => onUnassignMember(member, team.id)}
+                            className="p-1 rounded-full opacity-70 hover:opacity-100 hover:bg-black/20 transition-all"
+                            aria-label={`${t('unassign')} ${member}`}
+                            title={`${t('unassign')} ${member}`}
+                        >
+                            <CloseIcon />
+                        </button>
+                    </li>
+                    {index === 4 && team.members.length > 5 && (
+                        <li className="h-0.5 w-full bg-gray-500/50 my-2 rounded-full" aria-hidden="true"></li>
+                    )}
+                </React.Fragment>
             ))}
             </ul>
         ) : (
