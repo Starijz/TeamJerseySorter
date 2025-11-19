@@ -3,7 +3,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { LocalizationProvider } from './context/LocalizationContext';
-import { registerSW } from 'virtual:pwa-register';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -18,6 +17,3 @@ root.render(
     </LocalizationProvider>
   </React.StrictMode>
 );
-
-// Register the service worker with auto-update.
-registerSW({ immediate: true });
